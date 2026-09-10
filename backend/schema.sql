@@ -28,6 +28,19 @@ CREATE INDEX IF NOT EXISTS idx_events_status     ON events(status);
 CREATE INDEX IF NOT EXISTS idx_events_detected   ON events(detected_at);
 CREATE INDEX IF NOT EXISTS idx_events_bus        ON events(bus_id);
 
+-- Traffic-density points used by the map heatmap. These can be replaced by
+-- real telemetry points from the bus/CCTV pipeline later.
+CREATE TABLE IF NOT EXISTS heatmap_points (
+  id          TEXT PRIMARY KEY,
+  lat         REAL NOT NULL,
+  lng         REAL NOT NULL,
+  intensity   REAL NOT NULL CHECK (intensity >= 0 AND intensity <= 1),
+  recorded_at TEXT NOT NULL,
+  source      TEXT NOT NULL DEFAULT 'traffic_sensor'
+);
+
+CREATE INDEX IF NOT EXISTS idx_heatmap_recorded ON heatmap_points(recorded_at);
+
 -- Optional: fleet/bus registry, useful once real buses report in.
 CREATE TABLE IF NOT EXISTS buses (
   bus_id          TEXT PRIMARY KEY,

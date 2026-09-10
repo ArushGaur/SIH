@@ -36,6 +36,13 @@
             <div class="filter-group" id="filterList"></div>
 
             <div class="divider"></div>
+            <h2>Layers</h2>
+            <div class="toggle-row">
+                <span>Event density heatmap</span>
+                <div class="switch on" id="heatToggle"></div>
+            </div>
+
+            <div class="divider"></div>
             <h2>Fleet Snapshot</h2>
             <div class="stat-row"><span>Buses reporting</span><b id="busesReporting">-- / --</b></div>
             <div class="stat-row"><span>Active events</span><b id="totalEvents">--</b></div>
@@ -60,6 +67,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
     <script src="app.js"></script>
 </body>
 

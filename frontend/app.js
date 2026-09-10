@@ -68,9 +68,15 @@ async function fetchBuses() {
     catch (error) { console.error('Failed to load buses from API:', error); return []; }
 }
 
+async function fetchHeatmap() {
+    try { return await fetchJson('/api/heatmap'); }
+    catch (error) { console.error('Failed to load heatmap from API:', error); return []; }
+}
+
 const markerLayerGroups = {};
 Object.keys(CATEGORIES).forEach((key) => { markerLayerGroups[key] = L.layerGroup().addTo(map); });
 let hasFittedToEvents = false;
+let heatLayer = null;
 
 function makeDivIcon(color, catKey) {
     return L.divIcon({
@@ -142,10 +148,30 @@ filterList.addEventListener('change', (event) => {
     else map.removeLayer(markerLayerGroups[category]);
 });
 
+const heatToggle = document.getElementById('heatToggle');
+heatToggle.addEventListener('click', () => {
+    heatToggle.classList.toggle('on');
+    if (heatLayer) {
+        if (heatToggle.classList.contains('on')) heatLayer.addTo(map);
+        else map.removeLayer(heatLayer);
+    }
+});
+
 async function refreshFromDatabase() {
-    const [events, stats, buses] = await Promise.all([fetchEvents(), fetchStats(), fetchBuses()]);
+    const [events, stats, buses, heatPoints] = await Promise.all([
+        fetchEvents(), fetchStats(), fetchBuses(), fetchHeatmap(),
+    ]);
     renderMarkers(events);
     renderFilterCounts(events);
+
+    if (heatLayer) map.removeLayer(heatLayer);
+    heatLayer = L.heatLayer(heatPoints, {
+        radius: 28,
+        blur: 22,
+        maxZoom: 15,
+        gradient: { 0.2: '#1e3a5f', 0.4: '#4f8cff', 0.6: '#f5a623', 0.8: '#ef4444', 1.0: '#ef4444' },
+    });
+    if (heatToggle.classList.contains('on')) heatLayer.addTo(map);
 
     if (buses.length) {
         const activeCount = buses.filter((bus) => bus.status === 'active').length;

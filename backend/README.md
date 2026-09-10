@@ -13,14 +13,14 @@ Browser (map.html)  --HTTP-->  server.js (Express)  --libSQL-->  Turso DB
 
 ## Files
 
-| File            | Purpose |
-|-----------------|---------|
-| `schema.sql`      | Table definitions (`events`, `buses`) |
-| `migrate.js`       | Applies `schema.sql` to your Turso DB |
-| `seed.js`          | Inserts fake demo events + fake image URLs |
-| `server.js`        | REST API in front of Turso (`GET/POST/PATCH/DELETE /api/events`, `/api/stats`, `/api/buses`) |
-| `urban-intelligence-gis.html` | The map, now fetching from `server.js` instead of generating fake data client-side |
-| `.env.example`      | Template for your Turso credentials |
+| File                          | Purpose                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `schema.sql`                  | Table definitions (`events`, `buses`)                                                                        |
+| `migrate.js`                  | Applies `schema.sql` to your Turso DB                                                                        |
+| `seed.js`                     | Inserts fake demo events + fake image URLs                                                                   |
+| `server.js`                   | REST API in front of Turso (`GET/POST/PATCH/DELETE /api/events`, `/api/stats`, `/api/buses`, `/api/heatmap`) |
+| `urban-intelligence-gis.html` | The map, now fetching from `server.js` instead of generating fake data client-side                           |
+| `.env.example`                | Template for your Turso credentials                                                                          |
 
 ## 1. Set up credentials
 
@@ -62,6 +62,15 @@ alerts, congestion points), each with a fake photo from picsum.photos.
 Swap `fakeImageUrl()` in `seed.js` for real hosted images whenever you're
 ready — the schema already has an `image_url` column for that.
 
+To add only demo traffic-density data without changing events or buses, run:
+
+```bash
+node seed.js --heatmap-only
+```
+
+This creates 180 rows in `heatmap_points`. Replace these demo rows with real
+traffic telemetry when that pipeline is available.
+
 ## 5. Run the API server
 
 ```bash
@@ -79,7 +88,9 @@ statically). It's hardcoded to look for the API at
 before the map's script runs:
 
 ```html
-<script>window.URBAN_INTEL_API_BASE = "https://your-api-domain.com";</script>
+<script>
+  window.URBAN_INTEL_API_BASE = "https://your-api-domain.com";
+</script>
 ```
 
 The map polls `/api/events` and `/api/stats` every 15 seconds, so
@@ -108,6 +119,7 @@ reload.
 - `DELETE /api/events/:id` — permanently remove an event.
 - `GET /api/stats` — total/high-severity counts, average confidence, per-category breakdown.
 - `GET /api/buses` — fleet snapshot.
+- `GET /api/heatmap` — active event coordinates and severity/confidence intensity values for the database-backed heatmap.
 
 ## What's next (not built yet, per your instructions)
 

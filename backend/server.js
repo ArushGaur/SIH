@@ -15,6 +15,7 @@
 //   DELETE /api/events/:id        delete an event (the AI agent will call this)
 //   GET    /api/stats             quick counts for the sidebar
 //   GET    /api/buses             fleet snapshot
+//   GET    /api/heatmap           database-backed heatmap points
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
@@ -177,6 +178,24 @@ app.get('/api/stats', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ---------- GET /api/heatmap ----------
+// Heat points are stored in Turso. No coordinates or intensities are
+// generated in the browser.
+app.get('/api/heatmap', async (req, res) => {
+  try {
+    const result = await db.execute(`
+      SELECT lat, lng, intensity
+      FROM heatmap_points
+      ORDER BY recorded_at DESC
+      LIMIT 2000
+    `);
+    res.json(result.rows.map((row) => [Number(row.lat), Number(row.lng), Number(row.intensity)]));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch heatmap data' });
   }
 });
 

@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urban Intelligence Platform — Fleet Sensing Map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Newsreader:wght@500;600&family=Roboto+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #12181f;
+      --panel-border: #232c37;
+      --ink: #e7ecf1;
+      --muted: #8b98a5;
+      --amber: #f5a623;
+      --teal: #2dd4bf;
+      --red: #ef4444;
+      --blue: #4f8cff;
+      --violet: #a78bfa;
+      --green: #3ecf8e;
+      --tile-filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.7);
+      --scrollbar: #2a3441;
+      --hover: #1a222c;
+      --checkbox-border: #3a4553;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --panel-border: #e2e5ea;
+      --ink: #1b2229;
+      --muted: #6b7684;
+      --tile-filter: none;
+      --scrollbar: #d4d9e0;
+      --hover: #f0f2f5;
+      --checkbox-border: #c6ccd4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Public Sans', sans-serif;
+      overflow: hidden;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    :root {
+      --sidebar-w: 300px;
+    }
+
+    #app {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: 60px 1fr;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      transition: grid-template-columns 0.25s ease;
+    }
+
+    #app.collapsed {
+      --sidebar-w: 0px;
+    }
+
+    header {
+      grid-column: 1/3;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--panel-border);
+      background: var(--panel);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      color: #0d1117;
+    }
+
+    .brand h1 {
+      font-family: 'Newsreader', serif;
+      font-style: normal;
+      font-weight: 600;
+      font-size: 17px;
+      margin: 0;
+      letter-spacing: 0.1px;
+    }
+
+    .brand p {
+      margin: 0;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    .status-pills {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'Roboto Mono', monospace;
+      padding: 5px 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    .dot.pulse {
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.35;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    aside {
+      background: var(--panel);
+      border-right: 1px solid var(--panel-border);
+      padding: 18px 16px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: opacity 0.15s ease;
+    }
+
+    #app.collapsed aside {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .drawer-handle {
+      position: absolute;
+      top: 76px;
+      left: var(--sidebar-w);
+      transform: translateX(-50%);
+      width: 22px;
+      height: 42px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 1500;
+      color: var(--muted);
+      transition: left 0.25s ease, background 0.15s ease;
+    }
+
+    .drawer-handle:hover {
+      background: var(--hover);
+      color: var(--ink);
+    }
+
+    .drawer-handle svg {
+      width: 13px;
+      height: 13px;
+      transition: transform 0.25s ease;
+    }
+
+    #app.collapsed .drawer-handle svg {
+      transform: rotate(180deg);
+    }
+
+    aside h2 {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      letter-spacing: 0.4px;
+    }
+
+    .filter-group {
+      margin-bottom: 20px;
+    }
+
+    .filter-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 2px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    .filter-item:hover {
+      background: var(--hover);
+    }
+
+    .filter-item input {
+      display: none;
+    }
+
+    .checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 5px;
+      border: 1.5px solid var(--checkbox-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .filter-item input:checked+.checkbox {
+      background: var(--check-color, var(--blue));
+      border-color: var(--check-color, var(--blue));
+    }
+
+    .checkbox svg {
+      width: 10px;
+      height: 10px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .filter-item input:checked+.checkbox svg {
+      opacity: 1;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .filter-label {
+      font-size: 13px;
+      flex: 1;
+    }
+
+    .filter-count {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--hover);
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--panel-border);
+      margin: 16px 0;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 5px 0;
+    }
+
+    .stat-row b {
+      color: var(--ink);
+      font-family: 'Roboto Mono', monospace;
+      font-weight: 500;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px;
+    }
+
+    .toggle-row span {
+      font-size: 13px;
+    }
+
+    .switch {
+      width: 34px;
+      height: 19px;
+      border-radius: 20px;
+      background: var(--scrollbar);
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .switch.on {
+      background: var(--blue);
+    }
+
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #e7ecf1;
+      transition: left 0.2s;
+    }
+
+    .switch.on::after {
+      left: 17px;
+    }
+
+    main {
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+    }
+
+    .leaflet-tile-pane {
+      filter: var(--tile-filter);
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+    }
+
+    .leaflet-popup-content {
+      margin: 12px 14px;
+    }
+
+    .leaflet-popup-tip {
+      background: var(--panel);
+    }
+
+    .popup-photo {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 9px;
+      border: 1px solid var(--panel-border);
+      display: block;
+      background: var(--hover);
+    }
+
+    .popup-title {
+      font-weight: 600;
+      font-size: 13.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .popup-row {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 2px 0;
+      font-family: 'Roboto Mono', monospace;
+    }
+
+    .popup-row span:last-child {
+      color: var(--ink);
+    }
+
+    .conf-bar {
+      height: 4px;
+      border-radius: 3px;
+      background: var(--hover);
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .conf-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .legend-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 11.5px;
+      color: var(--muted);
+      z-index: 1000;
+      font-family: 'Roboto Mono', monospace;
+    }
+
+    .map-title {
+      position: absolute;
+      top: 16px;
+      left: calc(var(--sidebar-w) + 40px);
+      z-index: 1000;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 8px 14px;
+      transition: left 0.25s ease;
+      max-width: calc(100% - var(--sidebar-w) - 60px);
+    }
+
+    .map-title .city {
+      font-family: 'Newsreader', serif;
+      font-style: normal;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .map-title .sub {
+      font-size: 10.5px;
+      color: var(--muted);
+      font-family: 'Roboto Mono', monospace;
+    }
+
+    .fleet-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      min-width: 150px;
+    }
+
+    .fleet-badge .fh {
+      font-size: 10.5px;
+      color: var(--muted);
+      letter-spacing: 0.4px;
+      margin-bottom: 6px;
+    }
+
+    .fleet-badge .fv {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: 'Roboto Mono', monospace;
+    }
+
+    .fleet-badge .fv span {
+      font-size: 11px;
+      color: var(--green);
+      font-weight: 500;
+      margin-left: 4px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar);
+      border-radius: 3px;
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      cursor: pointer;
+      background: transparent;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      transition: background 0.15s;
+    }
+
+    .theme-toggle:hover {
+      background: var(--hover);
+    }
+
+    .theme-toggle svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .div-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid rgba(0, 0, 0, 0.35);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .div-icon-glyph {
+      transform: rotate(45deg);
+      width: 15px;
+      height: 15px;
+      display: flex;
+    }
+
+    .div-icon-glyph svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .popup-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .popup-icon svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .leaflet-control-zoom {
+      display: none !important;
+    }
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width:1024px) {
+      :root {
+        --sidebar-w: 260px;
+      }
+
+      .fleet-badge {
+        min-width: 120px;
+        padding: 8px 12px;
+      }
+
+      .fleet-badge .fv {
+        font-size: 17px;
+      }
+    }
+
+    @media (max-width:820px) {
+      body {
+        overflow-y: auto;
+      }
+
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        min-height: 100vh;
+      }
+
+      header {
+        flex-wrap: wrap;
+        row-gap: 8px;
+        padding: 10px 14px;
+      }
+
+      .status-pills {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .pill {
+        font-size: 11px;
+        padding: 4px 8px;
+      }
+
+      aside {
+        order: 2;
+        width: 100%;
+        max-height: 0;
+        padding: 0 16px;
+        border-right: none;
+        border-bottom: 1px solid var(--panel-border);
+        transition: max-height 0.25s ease, padding 0.25s ease;
+      }
+
+      #app.mobile-open aside {
+        max-height: 70vh;
+        padding: 16px;
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #app.collapsed aside {
+        opacity: 0;
+      }
+
+      .drawer-handle {
+        position: static;
+        transform: none;
+        width: 100%;
+        height: 34px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        order: 1;
+      }
+
+      .drawer-handle svg {
+        transform: rotate(-90deg);
+      }
+
+      #app.mobile-open .drawer-handle svg {
+        transform: rotate(90deg);
+      }
+
+      #app.collapsed .drawer-handle svg {
+        transform: rotate(-90deg);
+      }
+
+      main {
+        order: 3;
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 360px;
+      }
+
+      .map-title {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        max-width: calc(100% - 20px);
+        padding: 7px 10px;
+      }
+
+      .map-title .city {
+        font-size: 13px;
+      }
+
+      .fleet-badge {
+        top: auto;
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+        padding: 8px 12px;
+      }
+
+      .fleet-badge .fh {
+        margin-bottom: 0;
+      }
+
+      .legend-panel {
+        bottom: 10px;
+        left: 10px;
+        max-width: calc(100% - 130px);
+        font-size: 10px;
+        padding: 6px 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    @media (max-width:480px) {
+      .brand h1 {
+        font-size: 15px;
+      }
+
+      .brand .mark {
+        width: 28px;
+        height: 28px;
+        font-size: 13px;
+      }
+
+      .status-pills .pill:first-child span:last-child,
+      .pill:first-child {
+        display: none;
+      }
+
+      /* hide "Live feed simulated" text pill on very small screens */
+      .theme-toggle span {
+        display: none;
+      }
+
+      main {
+        min-height: 320px;
+      }
+
+      .map-title {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+      }
+
+      .legend-panel {
+        display: none;
+      }
+
+      /* avoid crowding tiny viewport; attribution still in footer note */
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <div class="brand">
+        <div class="mark">UI</div>
+        <h1>Urban Intelligence Platform</h1>
+      </div>
+      <div class="status-pills">
+        <div class="pill"><span class="dot pulse"></span>Live feed simulated</div>
+        <div class="pill" id="clockPill">--:--:--</div>
+        <div class="theme-toggle" id="themeToggle">
+          <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"></svg>
+          <span id="themeLabel">Dark</span>
+        </div>
+      </div>
+    </header>
+
+    <aside>
+      <h2>Event Filters</h2>
+      <div class="filter-group" id="filterList"></div>
+
+      <div class="divider"></div>
+      <h2>Layers</h2>
+      <div class="toggle-row">
+        <span>Traffic density heatmap</span>
+        <div class="switch on" id="heatToggle"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Bus route lines</span>
+        <div class="switch on" id="routeToggle"></div>
+      </div>
+
+      <div class="divider"></div>
+      <h2>Fleet Snapshot</h2>
+      <div class="stat-row"><span>Buses reporting</span><b id="busesReporting">-- / --</b></div>
+      <div class="stat-row"><span>Events (last 24h)</span><b id="totalEvents">--</b></div>
+      <div class="stat-row"><span>High severity</span><b style="color:#ef4444">--</b></div>
+      <div class="stat-row"><span>Avg confidence</span><b>91.4%</b></div>
+    </aside>
+
+    <div class="drawer-handle" id="drawerHandle" title="Toggle filters panel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </div>
+
+    <main>
+      <div id="map"></div>
+      <div class="map-title">
+        <div class="city">Demo City Sector — Core Grid</div>
+        <div class="sub">Simulated telemetry · not live data</div>
+      </div>
+      <div class="fleet-badge">
+        <div class="fh">Active alerts</div>
+        <div class="fv" id="activeAlerts">--<span>▲ live</span></div>
+      </div>
+      <div class="legend-panel">© OpenStreetMap contributors · Rendered via Leaflet.js</div>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+  <script>
+    // ---------- CONFIG: marker icons (representative shapes, not abstract glyphs) ----------
+    const ICONS = {
+      pothole: `<svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="13" rx="7.5" ry="4.5"/><path d="M7 10.5l2 2-1.2 2M14.5 9.5l1.8 2.8-1.8 2M11 8.5l1 3"/></svg>`,
+      road_damage: `<svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l9.2 16H2.8L12 3.5z"/><path d="M9.8 10l2.2 2.2-1.6 2 2.1 1.8"/></svg>`,
+      missing_zebra: `<svg viewBox="0 0 24 24" fill="#0d1117" stroke="none"><rect x="2.6" y="5.5" width="2.8" height="13" rx="0.6"/><rect x="7.6" y="5.5" width="2.8" height="13" rx="0.6"/><rect x="12.6" y="5.5" width="2.8" height="13" rx="0.6"/><rect x="17.6" y="5.5" width="2.8" height="13" rx="0.6"/></svg>`,
+      signboard: `<svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21V10.5"/><rect x="6.3" y="3.3" width="10.5" height="6.4" rx="1" transform="rotate(-9 11.5 6.5)"/></svg>`,
+      waterlog: `<svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 9.8c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0 3.2-1.6 4.8 0 3.2 1.6 4.8 0"/><path d="M2.8 15c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0 3.2-1.6 4.8 0 3.2 1.6 4.8 0"/></svg>`,
+      crossing_alert: `<svg viewBox="0 0 24 24" fill="#0d1117" stroke="none"><circle cx="12" cy="4.8" r="2.1"/><path d="M12 8c-1.7 0-3 1.1-3.3 2.7l-.9 3.9 2.1.5-.5 6h1.9l.6-5 .9.9.6 4.1h1.9l-.7-5.9 1.8-1-.9-3.9C15 9.1 13.7 8 12 8z"/></svg>`,
+      congestion: `<svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="9.2" width="9.4" height="4.8" rx="1.4"/><circle cx="4.2" cy="14.4" r="1.05" fill="#0d1117"/><circle cx="9.4" cy="14.4" r="1.05" fill="#0d1117"/><rect x="13" y="6" width="9.4" height="4.8" rx="1.4"/><circle cx="15.6" cy="11.2" r="1.05" fill="#0d1117"/><circle cx="20.8" cy="11.2" r="1.05" fill="#0d1117"/></svg>`,
+    };
+
+    // ---------- CONFIG: categories ----------
+    const CATEGORIES = {
+      pothole: {
+        label: "Potholes", color: "#f5a623", icon: "●",
+        photos: [
+          "https://images.unsplash.com/photo-1594818379496-da1e345b0ded?w=400&q=60",
+          "https://images.unsplash.com/photo-1621252179027-94459d278660?w=400&q=60"
+        ]
+      },
+      road_damage: {
+        label: "Damaged road / divider", color: "#ef4444", icon: "▲",
+        photos: [
+          "https://images.unsplash.com/photo-1600499302943-4c94fef5c1b9?w=400&q=60",
+          "https://images.unsplash.com/photo-1573765752055-9c5f70b5dfd5?w=400&q=60"
+        ]
+      },
+      missing_zebra: {
+        label: "Missing zebra crossing", color: "#a78bfa", icon: "▮",
+        photos: [
+          "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400&q=60",
+          "https://images.unsplash.com/photo-1541709637-8471b7f8f32b?w=400&q=60"
+        ]
+      },
+      signboard: {
+        label: "Damaged/missing signboard", color: "#4f8cff", icon: "■",
+        photos: [
+          "https://images.unsplash.com/photo-1580901369073-caf3f2c37e77?w=400&q=60",
+          "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&q=60"
+        ]
+      },
+      waterlog: {
+        label: "Waterlogging", color: "#2dd4bf", icon: "◆",
+        photos: [
+          "https://images.unsplash.com/photo-1547683905-f686c993aae5?w=400&q=60",
+          "https://images.unsplash.com/photo-1541154763-3f4552211f1a?w=400&q=60"
+        ]
+      },
+      crossing_alert: {
+        label: "Pedestrian crossing alert", color: "#3ecf8e", icon: "★",
+        photos: [
+          "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=400&q=60",
+          "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=400&q=60"
+        ]
+      },
+      congestion: {
+        label: "Congestion point", color: "#f97316", icon: "◼",
+        photos: [
+          "https://images.unsplash.com/photo-1573108724029-4c46571d6490?w=400&q=60",
+          "https://images.unsplash.com/photo-1519648023493-d82b5f8d7b8a?w=400&q=60"
+        ]
+      },
+    };
+
+    // Demo city center (arbitrary generic grid, e.g. representative Indian city center)
+    const CENTER = [25.5941, 85.1376]; // Patna-ish, generic mid-size Indian city
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView(CENTER, 13);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // ---------- LIVE DATA (from Turso via the API server) ----------
+    // This is the base URL of server.js. Change if you deploy it elsewhere,
+    // e.g. "https://your-api-domain.com".
+    const isLocal = window.location.protocol === 'file:' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+    const API_BASE = window.URBAN_INTEL_API_BASE || (isLocal ? 'http://localhost:8787' : '');
+    const POLL_INTERVAL_MS = 15000; // refresh from the DB every 15s
+
+    function jitter(base, spread) { return base + (Math.random() - 0.5) * spread; }
+
+    // Normalizes a row coming back from the API (Turso column names) into the
+    // shape the rest of the map code expects.
+    function normalizeEvent(row) {
+      return {
+        id: row.id,
+        cat: row.category,
+        lat: Number(row.lat),
+        lng: Number(row.lng),
+        confidence: Number(row.confidence),
+        timestamp: (row.detected_at || '').replace('T', ' ').replace(/\.\d+Z?$/, '').slice(0, 16),
+        bus: row.bus_id,
+        severity: row.severity,
+        imageUrl: row.image_url,
+      };
+    }
+
+    let allEvents = [];
+
+    async function fetchEvents() {
+      try {
+        const res = await fetch(`${API_BASE}/api/events`);
+        if (!res.ok) throw new Error(`API responded ${res.status}`);
+        const rows = await res.json();
+        return rows.map(normalizeEvent);
+      } catch (err) {
+        console.error('Failed to load events from API:', err);
+        document.getElementById('clockPill').title = 'API unreachable — check server.js is running';
+        return [];
+      }
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/stats`);
+        if (!res.ok) throw new Error(`API responded ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        console.error('Failed to load stats from API:', err);
+        return null;
+      }
+    }
+
+    // Fake traffic density points (denser cluster, more points, used for heat layer)
+    function genHeatPoints(n, spread) {
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        pts.push([jitter(CENTER[0], spread), jitter(CENTER[1], spread), Math.random() * 0.8 + 0.2]);
+      }
+      return pts;
+    }
+    const heatPoints = genHeatPoints(180, 0.06);
+
+    // Fake bus routes (simple polylines around center)
+    function genRoute(offsetLat, offsetLng, pointsCount, spread) {
+      const pts = [];
+      let lat = CENTER[0] + offsetLat, lng = CENTER[1] + offsetLng;
+      for (let i = 0; i < pointsCount; i++) {
+        lat += (Math.random() - 0.3) * spread;
+        lng += (Math.random() - 0.3) * spread;
+        pts.push([lat, lng]);
+      }
+      return pts;
+    }
+    const routes = [
+      genRoute(0.03, -0.03, 10, 0.012),
+      genRoute(-0.02, 0.02, 10, 0.012),
+      genRoute(0.01, 0.04, 10, 0.012),
+    ];
+
+    // ---------- LAYERS ----------
+    const markerLayerGroups = {};
+    Object.keys(CATEGORIES).forEach(key => { markerLayerGroups[key] = L.layerGroup(); });
+
+    function makeDivIcon(color, catKey) {
+      return L.divIcon({
+        className: '',
+        html: `<div class="div-icon" style="background:${color};width:28px;height:28px;">
+             <div class="div-icon-glyph">${ICONS[catKey]}</div>
+           </div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -26]
+      });
+    }
+
+    function renderMarkers(events) {
+      Object.values(markerLayerGroups).forEach(g => g.clearLayers());
+      events.forEach((ev) => {
+        const cfg = CATEGORIES[ev.cat];
+        if (!cfg) return; // unknown category from DB, skip defensively
+        const marker = L.marker([ev.lat, ev.lng], { icon: makeDivIcon(cfg.color, ev.cat) });
+        const confColor = ev.confidence > 90 ? '#3ecf8e' : ev.confidence > 80 ? '#f5a623' : '#ef4444';
+        const photoUrl = ev.imageUrl || cfg.photos[0];
+        marker.bindPopup(`
+      <img class="popup-photo" src="${photoUrl}" alt="${cfg.label} detection frame" loading="lazy" onerror="this.style.display='none'">
+      <div class="popup-title"><span class="popup-icon" style="background:${cfg.color}">${ICONS[ev.cat]}</span> ${cfg.label}</div>
+      <div class="popup-row"><span>Detected by</span><span>${ev.bus}</span></div>
+      <div class="popup-row"><span>Timestamp</span><span>${ev.timestamp}</span></div>
+      <div class="popup-row"><span>Severity</span><span>${ev.severity}</span></div>
+      <div class="popup-row"><span>GPS</span><span>${ev.lat.toFixed(4)}, ${ev.lng.toFixed(4)}</span></div>
+      <div class="popup-row"><span>Confidence</span><span>${ev.confidence}%</span></div>
+      <div class="conf-bar"><div class="conf-fill" style="width:${ev.confidence}%;background:${confColor}"></div></div>
+    `, { maxWidth: 260 });
+        markerLayerGroups[ev.cat].addLayer(marker);
+      });
+    }
+
+    function renderFilterCounts(events) {
+      Object.keys(CATEGORIES).forEach(key => {
+        const count = events.filter(e => e.cat === key).length;
+        const el = document.querySelector(`.filter-count[data-cat-count="${key}"]`);
+        if (el) el.textContent = count;
+      });
+    }
+
+    // Heat layer
+    const heat = L.heatLayer(heatPoints, { radius: 28, blur: 22, maxZoom: 15, gradient: { 0.2: '#1e3a5f', 0.4: '#4f8cff', 0.6: '#f5a623', 0.8: '#ef4444', 1.0: '#ef4444' } }).addTo(map);
+
+    // Route lines
+    const routeLayer = L.layerGroup();
+    routes.forEach((pts, i) => {
+      L.polyline(pts, { color: '#4f8cff', weight: 2, opacity: 0.55, dashArray: '1,7' }).addTo(routeLayer);
+    });
+    routeLayer.addTo(map);
+
+    // ---------- SIDEBAR FILTER UI ----------
+    const filterList = document.getElementById('filterList');
+    Object.entries(CATEGORIES).forEach(([key, cfg]) => {
+      const item = document.createElement('label');
+      item.className = 'filter-item';
+      item.style.setProperty('--check-color', cfg.color);
+      item.innerHTML = `
+    <input type="checkbox" checked data-cat="${key}">
+    <span class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="3"><path d="M4 12l6 6L20 6"/></svg></span>
+    <span class="swatch" style="background:${cfg.color}"></span>
+    <span class="filter-label">${cfg.label}</span>
+    <span class="filter-count" data-cat-count="${key}">--</span>
+  `;
+      filterList.appendChild(item);
+    });
+
+    filterList.addEventListener('change', (e) => {
+      const cat = e.target.getAttribute('data-cat');
+      if (!cat) return;
+      if (e.target.checked) { markerLayerGroups[cat].addTo(map); }
+      else { map.removeLayer(markerLayerGroups[cat]); }
+    });
+
+    // ---------- LAYER TOGGLES ----------
+    const heatToggle = document.getElementById('heatToggle');
+    heatToggle.addEventListener('click', () => {
+      heatToggle.classList.toggle('on');
+      if (heatToggle.classList.contains('on')) { heat.addTo(map); } else { map.removeLayer(heat); }
+    });
+    const routeToggle = document.getElementById('routeToggle');
+    routeToggle.addEventListener('click', () => {
+      routeToggle.classList.toggle('on');
+      if (routeToggle.classList.contains('on')) { routeLayer.addTo(map); } else { map.removeLayer(routeLayer); }
+    });
+
+    // ---------- STATS + DATA REFRESH ----------
+    async function fetchBuses() {
+      try {
+        const res = await fetch(`${API_BASE}/api/buses`);
+        if (!res.ok) throw new Error(`API responded ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        console.error('Failed to load buses from API:', err);
+        return [];
+      }
+    }
+
+    async function refreshFromDatabase() {
+      const [events, stats, buses] = await Promise.all([fetchEvents(), fetchStats(), fetchBuses()]);
+      allEvents = events;
+      renderMarkers(allEvents);
+      renderFilterCounts(allEvents);
+
+      if (buses.length) {
+        const activeCount = buses.filter(b => b.status === 'active').length;
+        document.getElementById('busesReporting').textContent = `${activeCount} / ${buses.length}`;
+      }
+
+      if (stats) {
+        document.getElementById('totalEvents').textContent = stats.total_events;
+        document.getElementById('activeAlerts').innerHTML = stats.total_events + '<span>▲ live</span>';
+        document.querySelectorAll('.stat-row b')[1].textContent = stats.high_severity;
+        document.querySelectorAll('.stat-row b')[3].textContent = stats.avg_confidence + '%';
+      } else {
+        document.getElementById('totalEvents').textContent = allEvents.length;
+        document.getElementById('activeAlerts').innerHTML = allEvents.length + '<span>▲ live</span>';
+        document.querySelectorAll('.stat-row b')[1].textContent = allEvents.filter(e => e.severity === 'High').length;
+      }
+    }
+
+    refreshFromDatabase();
+    setInterval(refreshFromDatabase, POLL_INTERVAL_MS);
+
+    // ---------- THEME TOGGLE ----------
+    const MOON_PATH = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    const SUN_PATH = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+    const htmlEl = document.documentElement;
+    const themeIcon = document.getElementById('themeIcon');
+    const themeLabel = document.getElementById('themeLabel');
+
+    function applyTheme(theme) {
+      htmlEl.setAttribute('data-theme', theme);
+      themeIcon.innerHTML = theme === 'dark' ? MOON_PATH : SUN_PATH;
+      themeLabel.textContent = theme === 'dark' ? 'Dark' : 'Light';
+    }
+    applyTheme('dark');
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const next = htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+
+    // ---------- SIDEBAR DRAWER ----------
+    const appEl = document.getElementById('app');
+    const drawerHandle = document.getElementById('drawerHandle');
+    const isMobileLayout = () => window.matchMedia('(max-width:820px)').matches;
+
+    drawerHandle.addEventListener('click', () => {
+      if (isMobileLayout()) {
+        appEl.classList.toggle('mobile-open');
+        drawerHandle.title = appEl.classList.contains('mobile-open') ? 'Close filters panel' : 'Open filters panel';
+      } else {
+        appEl.classList.toggle('collapsed');
+        drawerHandle.title = appEl.classList.contains('collapsed') ? 'Open filters panel' : 'Close filters panel';
+      }
+      setTimeout(() => map.invalidateSize(), 260);
+    });
+
+    // Keep the map sized correctly on viewport/orientation changes
+    window.addEventListener('resize', () => {
+      clearTimeout(window.__resizeT);
+      window.__resizeT = setTimeout(() => map.invalidateSize(), 150);
+    });
+
+    // ---------- CLOCK ----------
+    function tickClock() {
+      const d = new Date();
+      document.getElementById('clockPill').textContent = d.toLocaleTimeString('en-IN', { hour12: false });
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+  </script>
+</body>
+
+</html>

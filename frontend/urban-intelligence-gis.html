@@ -898,7 +898,7 @@
     const isLocal = window.location.protocol === 'file:' ||
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1';
-    const API_BASE = window.URBAN_INTEL_API_BASE || (isLocal ? 'http://localhost:8787' : 'https://sih-u5m21.sevalla.app/');
+    const API_BASE = window.URBAN_INTEL_API_BASE || (isLocal ? 'http://localhost:8787' : 'https://sih-u5m21.sevalla.app');
     const POLL_INTERVAL_MS = 15000; // refresh from the DB every 15s
 
     function jitter(base, spread) { return base + (Math.random() - 0.5) * spread; }

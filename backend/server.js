@@ -16,11 +16,11 @@
 //   GET    /api/stats             quick counts for the sidebar
 //   GET    /api/buses             fleet snapshot
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
-const path = require('path');
 const { createClient } = require('@libsql/client');
 
 const url = process.env.TURSO_DATABASE_URL;

@@ -36,6 +36,7 @@ const db = createClient({ url, authToken });
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // generous limit in case base64 images are sent later
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'urban-intelligence-gis.html'));

@@ -1,12 +1,3 @@
-// Applies schema.sql to your Turso database.
-//
-// Usage:
-//   TURSO_DATABASE_URL="libsql://your-db-xxx.turso.io" \
-//   TURSO_AUTH_TOKEN="your-token" \
-//   node migrate.js
-//
-// Or create a .env file (see .env.example) and just run: node migrate.js
-
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');

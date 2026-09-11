@@ -106,9 +106,12 @@ def encode_snapshot(annotated_frame) -> str:
     """
     ok, buffer = cv2.imencode(".jpg", annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, SNAPSHOT_JPEG_QUALITY])
     if not ok:
+        print("[error] cv2.imencode failed - no image will be attached to this event")
         return None
     b64_data = base64.b64encode(buffer).decode("ascii")
-    return f"data:image/jpeg;base64,{b64_data}"
+    data_uri = f"data:image/jpeg;base64,{b64_data}"
+    print(f"[snapshot] jpeg bytes={len(buffer)} base64 chars={len(b64_data)} total data_uri chars={len(data_uri)}")
+    return data_uri
 
 
 def post_event(category: str, confidence: float, image_url: str = None):
@@ -123,12 +126,21 @@ def post_event(category: str, confidence: float, image_url: str = None):
         "image_url": image_url,
         "detected_at": None,  # server fills in "now"
     }
+    approx_payload_kb = (len(image_url) if image_url else 0) / 1024
     try:
-        resp = requests.post(f"{API_BASE_URL}/api/events", json=payload, timeout=3)
+        resp = requests.post(f"{API_BASE_URL}/api/events", json=payload, timeout=10)
         if resp.status_code == 201:
-            print(f"[reported] {category} conf={confidence:.2f} -> ({lat}, {lng}) photo={image_url}")
+            body = resp.json()
+            returned_image_url = body.get("image_url")
+            returned_len = len(returned_image_url) if returned_image_url else 0
+            sent_len = len(image_url) if image_url else 0
+            print(f"[reported] {category} conf={confidence:.2f} -> ({lat}, {lng}) "
+                  f"sent≈{approx_payload_kb:.0f}KB image_url_len sent={sent_len} returned={returned_len}")
+            if image_url and returned_len != sent_len:
+                print("[warn] server echoed back a DIFFERENT length image_url than what was sent - "
+                      "something is truncating or altering it (proxy body-size limit, DB column limit, etc).")
         else:
-            print(f"[warn] backend rejected event: {resp.status_code} {resp.text}")
+            print(f"[warn] backend rejected event: {resp.status_code} {resp.text[:300]}")
     except requests.exceptions.RequestException as e:
         print(f"[error] could not reach backend at {API_BASE_URL}: {e}")
 

@@ -97,6 +97,8 @@ app.post('/api/events', async (req, res) => {
       bus_id, image_url, detected_at,
     } = req.body || {};
 
+    console.log(`[POST /api/events] category=${category} image_url length received: ${image_url ? image_url.length : 0}`);
+
     if (!VALID_CATEGORIES.has(category)) {
       return res.status(400).json({ error: `category must be one of: ${[...VALID_CATEGORIES].join(', ')}` });
     }
@@ -118,7 +120,14 @@ app.post('/api/events', async (req, res) => {
       args: [id, category, lat, lng, finalConfidence, finalSeverity, bus_id, image_url || null, finalDetectedAt],
     });
 
-    res.status(201).json({ id, category, lat, lng, confidence: finalConfidence, severity: finalSeverity, bus_id, image_url, status: 'active', detected_at: finalDetectedAt });
+    // Read the row straight back from the DB (not just echoing the in-memory
+    // variable) so the response proves what actually got persisted, not just
+    // what this request handler received.
+    const verify = await db.execute({ sql: 'SELECT image_url FROM events WHERE id = ?', args: [id] });
+    const storedImageUrl = verify.rows[0] ? verify.rows[0].image_url : null;
+    console.log(`[POST /api/events] image_url length as stored in DB: ${storedImageUrl ? storedImageUrl.length : 0}`);
+
+    res.status(201).json({ id, category, lat, lng, confidence: finalConfidence, severity: finalSeverity, bus_id, image_url: storedImageUrl, status: 'active', detected_at: finalDetectedAt });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create event' });

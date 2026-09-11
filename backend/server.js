@@ -39,6 +39,11 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' })); // generous limit in case base64 images are sent later
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
+// Serves detection snapshot photos saved by live_inference.py (../model/detections/*.jpg)
+// so they can be referenced as plain URLs in the `image_url` field, e.g.
+// http://localhost:8787/detections/pothole_20260912_101530.jpg
+app.use('/detections', express.static(path.join(__dirname, '..', 'model', 'detections')));
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'urban-intelligence-gis.html'));
 });

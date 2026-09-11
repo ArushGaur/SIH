@@ -36,13 +36,8 @@ if (!url || !authToken) {
 const db = createClient({ url, authToken });
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // generous limit in case base64 images are sent later
+app.use(express.json({ limit: '10mb' })); // generous limit: base64-encoded detection photos are sent in the request body
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
-
-// Serves detection snapshot photos saved by live_inference.py (../model/detections/*.jpg)
-// so they can be referenced as plain URLs in the `image_url` field, e.g.
-// http://localhost:8787/detections/pothole_20260912_101530.jpg
-app.use('/detections', express.static(path.join(__dirname, '..', 'model', 'detections')));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'urban-intelligence-gis.html'));
@@ -201,6 +196,35 @@ app.get('/api/heatmap', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch heatmap data' });
+  }
+});
+
+// ---------- POST /api/heatmap (the AI agent / live_inference.py reports vehicle density) ----------
+app.post('/api/heatmap', async (req, res) => {
+  try {
+    const { lat, lng, intensity, source } = req.body || {};
+
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return res.status(400).json({ error: 'lat and lng must be numbers' });
+    }
+    if (typeof intensity !== 'number' || intensity < 0 || intensity > 1) {
+      return res.status(400).json({ error: 'intensity must be a number between 0 and 1' });
+    }
+
+    const id = crypto.randomUUID();
+    const recordedAt = new Date().toISOString();
+    const finalSource = source || 'traffic_sensor';
+
+    await db.execute({
+      sql: `INSERT INTO heatmap_points (id, lat, lng, intensity, recorded_at, source)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [id, lat, lng, intensity, recordedAt, finalSource],
+    });
+
+    res.status(201).json({ id, lat, lng, intensity, recorded_at: recordedAt, source: finalSource });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create heatmap point' });
   }
 });
 

@@ -96,7 +96,7 @@ function renderMarkers(events) {
         const marker = L.marker([event.lat, event.lng], { icon: makeDivIcon(category.color, event.cat) });
         const confidenceColor = event.confidence > 90 ? '#3ecf8e' : event.confidence > 80 ? '#f5a623' : '#ef4444';
         const photo = event.imageUrl
-            ? `<img class="popup-photo" src="${event.imageUrl}" alt="${category.label} detection frame" loading="lazy" onerror="this.style.display='none'" onclick="openLightbox('${event.imageUrl}')">`
+            ? `<img class="popup-photo" data-lightbox-src="${event.imageUrl}" alt="${category.label} detection frame" loading="lazy" onerror="this.style.display='none'">`
             : '';
         marker.bindPopup(`
       ${photo}
@@ -108,6 +108,10 @@ function renderMarkers(events) {
       <div class="popup-row"><span>Confidence</span><span>${event.confidence}%</span></div>
       <div class="conf-bar"><div class="conf-fill" style="width:${event.confidence}%;background:${confidenceColor}"></div></div>
     `, { maxWidth: 260 });
+        marker.on('popupopen', () => {
+            const popupImg = document.querySelector('.leaflet-popup-content .popup-photo');
+            if (popupImg) popupImg.addEventListener('click', () => openLightbox(popupImg.getAttribute('data-lightbox-src')));
+        });
         markerLayerGroups[event.cat].addLayer(marker);
     });
 

@@ -96,7 +96,7 @@ function renderMarkers(events) {
         const marker = L.marker([event.lat, event.lng], { icon: makeDivIcon(category.color, event.cat) });
         const confidenceColor = event.confidence > 90 ? '#3ecf8e' : event.confidence > 80 ? '#f5a623' : '#ef4444';
         const photo = event.imageUrl
-            ? `<img class="popup-photo" src="${event.imageUrl}" alt="${category.label} detection frame" loading="lazy" onerror="this.style.display='none'">`
+            ? `<img class="popup-photo" src="${event.imageUrl}" alt="${category.label} detection frame" loading="lazy" onerror="this.style.display='none'" onclick="openLightbox('${event.imageUrl}')">`
             : '';
         marker.bindPopup(`
       ${photo}
@@ -229,3 +229,21 @@ function tickClock() {
 }
 tickClock();
 setInterval(tickClock, 1000);
+
+
+// --- Lightbox: click a popup photo to view it full-size ---
+function openLightbox(url) {
+    const lightbox = document.getElementById('lightbox');
+    const img = document.getElementById('lightboxImg');
+    img.src = url;
+    lightbox.classList.add('open');
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightboxImg').src = '';
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLightbox();
+});

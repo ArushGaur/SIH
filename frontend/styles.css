@@ -377,6 +377,37 @@ main {
     border: 1px solid var(--panel-border);
     display: block;
     background: var(--hover);
+    cursor: zoom-in;
+    transition: opacity 0.15s ease;
+}
+
+.popup-photo:hover {
+    opacity: 0.85;
+}
+
+.lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    padding: 40px;
+}
+
+.lightbox-overlay.open {
+    display: flex;
+}
+
+.lightbox-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .popup-title {

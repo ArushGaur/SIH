@@ -42,7 +42,7 @@ export default function Layout() {
   const [clock, setClock] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('urban-intel-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('urban-intel-theme') || 'light');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
